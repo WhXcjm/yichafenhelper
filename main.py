@@ -39,7 +39,7 @@ try:
 		resp.encoding='utf8'
 		tree=etree.HTML(resp.text)
 		test=homeurl+tree.xpath(param_test)[test_ID]
-		print(testurl)
+		# print(testurl)
 		break
 		time.sleep(0.5)
 except Exception as e:
