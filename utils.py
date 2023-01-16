@@ -1,5 +1,11 @@
 import random
-
+from datetime import datetime
+from os.path import exists
+import os
+if(not exists(".\\log\\")):
+    os.mkdir(".\\log\\")
+logFp = open(".\\log\\{}.log".format(datetime.now().strftime(
+    "%Y-%m-%d %H-%M-%S")), "a+", encoding="utf8")
 USER_AGENTS = [
     "Mozilla/5.0 (Linux; Android 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36",
     "Mozilla/5.0 (Linux; Android 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.1 Safari/537.36",
@@ -52,6 +58,22 @@ USER_AGENTS = [
     "Mozilla/5.0 (Linux; Android 8) AppleWebKit/537.15 (KHTML, like Gecko) Chrome/24.0.1295.0 Safari/537.15",
     "Mozilla/5.0 (Linux; Android 8) AppleWebKit/537.14 (KHTML, like Gecko) Chrome/24.0.1292.0 Safari/537.14"
 ]
+
+# def log(s,alsoPrint=True):
+#     if(alsoPrint):
+#         print(s)
+#     logFp.write(s)
+#     logFp.flush()
+
+
+class log():
+    def __init__(self, s, alsoPrint=True):
+        if(alsoPrint):
+            print(s)
+        logFp.write("Time: {}".format(datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S.%f\n"))+str(s)+"\n")
+        logFp.flush()
+
 
 def get_random_useragent():
     """生成随机的UserAgent

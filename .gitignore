@@ -1,1 +1,4 @@
 data.csv
+__pycache__/
+log/
+test.py
