@@ -1,5 +1,6 @@
 from lxml import etree
 from sys import argv
+from numpy import nan
 import pandas as pd
 import requests
 import time
@@ -19,7 +20,7 @@ homeUrlParam = "https://{sid}.yichafen.com"
 testUrlParam = """https://{sid}.yichafen.com/public/checkcondition/sqcode/{sqcode}/htmlType/default.html"""
 queryrespUrlParam = """https://{sid}.yichafen.com/public/queryresult.html"""
 tbHeaderParam = """//td[@class='left_cell']/span/text()"""
-tbContentParam = """//td[@class='right_cell']/text()"""
+tbContentParam = """//td[@class='right_cell']"""
 errorParam = """//p[@class="error"]/text()"""
 
 
@@ -42,16 +43,16 @@ outputData = {}
 
 for tup in data.itertuples():
     log('--------')
-    dt = tup[1:]
-    i = tup[0]
-    postdata = {}
     try:
+        dt = tup[1:]
+        i = tup[0]
+        postdata = {}
         sid = tup[1]
         # 爬取条目信息
         personalTestID = test_ID
         for i in range(1, len(col)):
             if(col[i] == "test_ID"):
-                personalTestID = int(dt[i])
+                personalTestID = dt[i]
             else:
                 postdata[col[i]] = dt[i]
         headers = {'User-Agent': utils.get_random_useragent()}
@@ -59,38 +60,47 @@ for tup in data.itertuples():
         homeUrl = homeUrlParam.format(sid=sid)
         resp = session.get(url=homeUrl, headers=headers)
         resp.encoding = 'utf8'
-        tree = etree.HTML(resp.text)
-        #
-        # print(resp.text)
-        testcode = tree.xpath(Param_test)[personalTestID].split('.')[0].split('/')[-1]
-        testdate = tree.xpath(Param_test_date)[personalTestID]
-        aid = "{sid}_{tid} ({tdate})".format(
-            sid=sid, tid=personalTestID, tdate=testdate)
-
-        # 爬取测试信息
-        # log(postdata)
-        testUrl = testUrlParam.format(sid=sid, sqcode=testcode)
-        resp = session.post(testUrl, postdata, headers=headers).text
-        tree = etree.HTML(resp)
-        err = tree.xpath(errorParam)
-        if(len(err) > 0):
-            raise Exception(err[0])
-        # log(resp)
-        log("////////////////////////////")
-
-        headers["Referer"] = testUrl
-        resp = session.get(queryrespUrlParam.format(sid=sid), headers=headers)
-        tree = etree.HTML(resp.text)
-        tbHeader = tree.xpath(tbHeaderParam)
-        tbContent = tree.xpath(tbContentParam)
-        log(tbHeader)
-        log(tbContent)
-        if(str(aid) not in outputData.keys()):
-            outputData[str(aid)] = pd.DataFrame(columns=tbHeader)
-        outputData[str(aid)].loc[outputData[str(aid)].shape[0]] = tbContent
+        tree_homepage = etree.HTML(resp.text)
+        tidlst=utils.handle_str_number_range(personalTestID,True)
     except Exception as e:
         log(f"//////\nError occurs while checking {postdata}.\nError info: {e}\n//////")
         # raise(e)
+    for tid in tidlst:
+        try:
+            testcode = tree_homepage.xpath(Param_test)[tid].split('.')[0].split('/')[-1]
+            testdate = tree_homepage.xpath(Param_test_date)[tid]
+            aid = "{sid}_{tid} ({tdate})".format(
+                sid=sid, tid=tid, tdate=testdate)
+
+            # 爬取测试信息
+            # log(postdata)
+            testUrl = testUrlParam.format(sid=sid, sqcode=testcode)
+            resp = session.post(testUrl, postdata, headers=headers).text
+            tree = etree.HTML(resp)
+            err = tree.xpath(errorParam)
+            if(len(err) > 0):
+                raise Exception(err[0])
+            # log(resp)
+            log("////////////////////////////")
+
+            headers["Referer"] = testUrl
+            resp = session.get(queryrespUrlParam.format(sid=sid), headers=headers)
+            tree = etree.HTML(resp.text)
+            tbHeader = tree.xpath(tbHeaderParam)
+            tbContent = tree.xpath(tbContentParam)
+            for i in range(len(tbContent)):
+                if(tbContent[i].text):
+                    tbContent[i]=tbContent[i].text
+                else:
+                    tbContent[i]=nan
+            log(tbHeader)
+            log(tbContent)
+            if(str(aid) not in outputData.keys()):
+                outputData[str(aid)] = pd.DataFrame(columns=tbHeader)
+            outputData[str(aid)].loc[outputData[str(aid)].shape[0]] = tbContent
+        except Exception as e:
+            log(f"//////\nError occurs while checking {postdata}(aid={aid}).\nError info: {e}\n//////")
+            # raise(e)
     time.sleep(0.5)
 log(outputData)
 while(True):
@@ -104,4 +114,5 @@ while(True):
         break
     except Exception as e:
         log(f"//////\nError occurs in saving procedure.\nError info: {e}\n//////")
-        mb.askretrycancel("ERROR","储存过程出现错误。\nError Info: {}".format(str(e)))
+        if(mb.askretrycancel("ERROR","储存过程出现错误。\nError Info: {}".format(str(e)))==False):
+            break

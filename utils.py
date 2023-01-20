@@ -2,6 +2,7 @@ import random
 from datetime import datetime
 from os.path import exists
 import os
+import re
 if(not exists(".\\log\\")):
     os.mkdir(".\\log\\")
 logFp = open(".\\log\\{}.log".format(datetime.now().strftime(
@@ -80,3 +81,31 @@ def get_random_useragent():
     :return: UserAgent字符串
     """
     return random.choice(USER_AGENTS)
+
+def handle_str_number_range(s,remove_duplication=False):
+    """convert str to range of integer.\ne.g. (\"x1,x2-x3,x4-x5_n\") -> x1, x2,x2+1,x2+1,...,x3-1,x3, x4,x4+n,x4+2n,...,x4+m*n(m_max|y<=x5)"""
+    s=str(s)
+    ls=s.split(',')
+    res=[]
+    Aparam="^[\d]*$"
+    Bparam="^([\d]*)-([\d]*)$"
+    Cparam="^([\d]*)-([\d]*)_([\d]*)$"
+    for st in ls:
+        A=re.match(Aparam,st)
+        if(A):
+            res.append(int(A.group(0)))
+            continue
+        B=re.match(Bparam,st)
+        if(B):
+            res.extend(range(int(B.group(1)),int(B.group(2))+1))
+            continue
+        C=re.match(Cparam,st)
+        if(C):
+            res.extend(range(int(C.group(1)),int(C.group(2))+1,int(C.group(3))))
+            continue
+    if(remove_duplication):
+        res = list(set(res))
+    return res
+if __name__=="__main__":
+    print("output: {}".format(handle_str_number_range(input("str: "))))
+    input("Press Enter to close")
