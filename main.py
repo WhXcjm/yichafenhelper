@@ -110,7 +110,8 @@ while(True):
         writer = pd.ExcelWriter(Fp)
         for (id, dat) in outputData.items():
             dat.to_excel(writer, sheet_name=id)
-            writer.save()
+            writer._save()
+        writer.close()
         break
     except Exception as e:
         log(f"//////\nError occurs in saving procedure.\nError info: {e}\n//////")
