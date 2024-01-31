@@ -7,7 +7,7 @@ if(not exists(".\\log\\")):
     os.mkdir(".\\log\\")
 logFp = open(".\\log\\{}.log".format(datetime.now().strftime(
     "%Y-%m-%d %H-%M-%S")), "a+", encoding="utf8")
-USER_AGENTS = [
+ANDROID_USER_AGENTS = [
     "Mozilla/5.0 (Linux; Android 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36",
     "Mozilla/5.0 (Linux; Android 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.1 Safari/537.36",
     "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.0 Safari/537.36",
@@ -76,11 +76,11 @@ class log():
         logFp.flush()
 
 
-def get_random_useragent():
+def get_random_android_useragent():
     """生成随机的UserAgent
     :return: UserAgent字符串
     """
-    return random.choice(USER_AGENTS)
+    return random.choice(ANDROID_USER_AGENTS)
 
 def handle_str_number_range(s,remove_duplication=False):
     """convert str to range of integer.\ne.g. (\"x1,x2-x3,x4-x5_n\") -> x1, x2,x2+1,x2+1,...,x3-1,x3, x4,x4+n,x4+2n,...,x4+m*n(m_max|y<=x5)"""

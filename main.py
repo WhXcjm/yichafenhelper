@@ -4,6 +4,7 @@ from numpy import nan
 import pandas as pd
 import requests
 import time
+import re
 import utils
 import tkinter.filedialog as filedia
 from tkinter import messagebox as mb
@@ -17,7 +18,8 @@ Param_test = """//a[@class="weui-cell weui-cell_access"]/@href"""
 Param_test_date = """//p[@style="font-size:14px;color:#999;"]/text()"""
 test_ID = 0
 homeUrlParam = "https://{sid}.yichafen.com"
-testUrlParam = """https://{sid}.yichafen.com/public/checkcondition/sqcode/{sqcode}/htmlType/default.html"""
+testUrlParam = """https://{sid}.yichafen.com/qz/{testcode}"""
+queryUrlParam = """https://{sid}.yichafen.com/public/checkcondition/sqcode/{sqcode}/from_device/mobile.html"""
 queryrespUrlParam = """https://{sid}.yichafen.com/public/queryresult.html"""
 tbHeaderParam = """//td[@class='left_cell']/span/text()"""
 tbContentParam = """//td[@class='right_cell']"""
@@ -55,7 +57,7 @@ for tup in data.itertuples():
                 personalTestID = dt[i]
             else:
                 postdata[col[i]] = dt[i]
-        headers = {'User-Agent': utils.get_random_useragent()}
+        headers = {'User-Agent': utils.get_random_android_useragent()}
         # log(f"headers:{headers}; postdata:{postdata}")
         homeUrl = homeUrlParam.format(sid=sid)
         resp = session.get(url=homeUrl, headers=headers)
@@ -71,11 +73,24 @@ for tup in data.itertuples():
             testdate = tree_homepage.xpath(Param_test_date)[tid]
             aid = "{sid}_{tid} ({tdate})".format(
                 sid=sid, tid=tid, tdate=testdate)
+            # 根据testcode爬取sqcode
+            testUrl = testUrlParam.format(sid=sid, testcode=testcode)
+            testUrlHtml = session.get(testUrl, headers=headers).text
+            # log(testUrlHtml)
+            sqcode = ""
+            pattern = r'\$.post\("/public/checkcondition/sqcode/(\w+)/from'
+            match = re.search(pattern, testUrlHtml,re.S)
+            if match:
+                sqcode = match.group(1)
+            else:
+                raise Exception("Failed to extract sqcode")
 
+            # log(sqcode)
             # 爬取测试信息
             # log(postdata)
-            testUrl = testUrlParam.format(sid=sid, sqcode=testcode)
-            resp = session.post(testUrl, postdata, headers=headers).text
+            queryUrl= queryUrlParam.format(sid=sid, sqcode=sqcode)
+            resp = session.post(queryUrl, data=postdata, headers=headers).text
+            # log(resp)
             tree = etree.HTML(resp)
             err = tree.xpath(errorParam)
             if(len(err) > 0):
