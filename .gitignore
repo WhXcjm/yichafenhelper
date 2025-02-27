@@ -4,3 +4,5 @@ log/
 test.py
 *.xlsx
 .vscode
+output/
+captcha.jpg

@@ -1,6 +1,7 @@
 from lxml import etree
 from sys import argv
 from numpy import nan
+from PIL import Image
 import pandas as pd
 import requests
 import time
@@ -10,7 +11,7 @@ import tkinter.filedialog as filedia
 from tkinter import messagebox as mb
 from utils import log
 import json
-dataFileLoc = ".\data.csv"
+dataFileLoc = ".\\data.csv"
 dataFp = 0
 data = 0
 session = requests.session()
@@ -18,10 +19,11 @@ Param_test = """//a[@class="weui-cell weui-cell_access"]/@href"""
 Param_test_date = """//p[@style="font-size:14px;color:#999;"]/text()"""
 test_ID = 0
 homeUrlParam = "https://{sid}.yichafen.com"
-testUrlParam = """https://{sid}.yichafen.com/qz/{testcode}"""
-queryUrlParam = """https://{sid}.yichafen.com/public/checkcondition/sqcode/{sqcode}/from_device/mobile.html"""
-queryrespUrlParam = """https://{sid}.yichafen.com/public/queryresult.html"""
-tbHeaderParam = """//td[@class='left_cell']/span/text()"""
+testUrlParam = """https://{sid}.yichafen.com/qz/{testcode}?from_device=mobile"""
+verifyimgUrlParam = """https://{sid}.yichafen.com/public/verify.html"""
+queryUrlParam = """https://{sid}.yichafen.com/public/verifycondition/sqcode/{sqcode}/from_device/mobile.html"""
+queryrespUrlParam = """https://{sid}.yichafen.com/public/queryresult/from_device/mobile.html"""
+tbHeaderParam = """//td[@class='left_cell']"""
 tbContentParam = """//td[@class='right_cell']"""
 errorParam = """//p[@class="error"]/text()"""
 
@@ -73,12 +75,38 @@ for tup in data.itertuples():
             testdate = tree_homepage.xpath(Param_test_date)[tid]
             aid = "{sid}_{tid} ({tdate})".format(
                 sid=sid, tid=tid, tdate=testdate)
-            # 根据testcode爬取sqcode
+            # 根据testcode爬取sqcode，让客户分析ver-img
+            verify = None
             testUrl = testUrlParam.format(sid=sid, testcode=testcode)
             testUrlHtml = session.get(testUrl, headers=headers).text
+            captcha_img = etree.HTML(testUrlHtml).xpath("//div[@id='jsPicVerifyBox']//img[@id='verifyimg']/@src")
+            if captcha_img:
+                captcha_url = captcha_img[0]
+                if not captcha_url.startswith("http"):
+                    captcha_url = verifyimgUrlParam.format(sid=sid)
+
+                # 下载验证码图片
+                captcha_resp = session.get(captcha_url, headers=headers)
+                with open("captcha.jpg", "wb") as f:
+                    f.write(captcha_resp.content)
+
+                # 显示验证码图片
+                img = Image.open("captcha.jpg")
+                img.show()
+
+                # 输入验证码
+                captcha_code = input("请输入验证码: ")
+
+                # 将验证码添加到postdata中
+                postdata["verify"] = captcha_code
+            else:
+                print("验证码不存在，可以继续处理")
+                if "verify" in postdata:
+                    del postdata["verify"]
+
             # log(testUrlHtml)
             sqcode = ""
-            pattern = r'\$.post\("/public/checkcondition/sqcode/(\w+)/from'
+            pattern = r'\$.post\("/public/verifycondition/sqcode/(\w+)/from'
             match = re.search(pattern, testUrlHtml,re.S)
             if match:
                 sqcode = match.group(1)
@@ -103,13 +131,20 @@ for tup in data.itertuples():
             tree = etree.HTML(resp.text)
             tbHeader = tree.xpath(tbHeaderParam)
             tbContent = tree.xpath(tbContentParam)
+            for i in range(len(tbHeader)):
+                if(tbHeader[i].text):
+                    tbHeader[i]=tbHeader[i].text
+                else:
+                    tbHeader[i]=''.join(tbHeader[i].xpath(".//text()")).strip()
             for i in range(len(tbContent)):
                 if(tbContent[i].text):
                     tbContent[i]=tbContent[i].text
                 else:
                     tbContent[i]=nan
             log(tbHeader)
+            log(len(tbHeader))
             log(tbContent)
+            log(len(tbContent))
             if(str(aid) not in outputData.keys()):
                 outputData[str(aid)] = pd.DataFrame(columns=tbHeader)
             outputData[str(aid)].loc[outputData[str(aid)].shape[0]] = tbContent
